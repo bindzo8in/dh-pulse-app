@@ -6,6 +6,7 @@ import { authClient } from '@/lib/auth-client';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Redirect, useRouter } from 'expo-router';
 import { format } from 'date-fns';
+import { useAttendanceOfflineStore } from '@/stores/attendance-offline-store';
 
 const API_BASE_URL = `${process.env.EXPO_PUBLIC_BETTER_AUTH_SERVER_URL}/api`;
 
@@ -17,7 +18,10 @@ export default function HomeScreen() {
   const isDark = colorScheme === 'dark';
   const router = useRouter();
 
-  const [attendanceRecord, setAttendanceRecord] = useState<any>(null);
+  const attendanceRecord = useAttendanceOfflineStore((s) => s.currentRecord);
+  const setAttendanceRecord = useAttendanceOfflineStore((s) => s.setRecord);
+  const syncQueue = useAttendanceOfflineStore((s) => s.syncQueue);
+
   const [holidays, setHolidays] = useState<any[]>([]);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -28,14 +32,20 @@ export default function HomeScreen() {
   const fetchData = async () => {
     setRefreshing(true);
     try {
-      // Get Today's Attendance
-      const { data: attData } = await authClient.$fetch(`${API_BASE_URL}/attendance/today`);
+      // Fetch Today's Attendance and Upcoming Holidays concurrently
+      const [attRes, holRes] = await Promise.all([
+        authClient.$fetch(`${API_BASE_URL}/attendance/today`),
+        authClient.$fetch(`${API_BASE_URL}/holiday/upcoming`, { method: 'POST' }),
+      ]);
+
+      const attData = attRes.data;
       if (attData && (attData as any).success) {
-        setAttendanceRecord((attData as any).record);
+        if (syncQueue.length === 0) {
+          setAttendanceRecord((attData as any).record);
+        }
       }
 
-      // Get Upcoming Holidays
-      const { data: holData } = await authClient.$fetch(`${API_BASE_URL}/holiday/upcoming`, { method: 'POST' });
+      const holData = holRes.data;
       if (holData && (holData as any).success) {
         setHolidays((holData as any).holidays || []);
       }
