@@ -28,14 +28,18 @@ export default function HomeScreen() {
   const fetchData = async () => {
     setRefreshing(true);
     try {
-      // Get Today's Attendance
-      const { data: attData } = await authClient.$fetch(`${API_BASE_URL}/attendance/today`);
+      // Fetch Today's Attendance and Upcoming Holidays concurrently
+      const [attRes, holRes] = await Promise.all([
+        authClient.$fetch(`${API_BASE_URL}/attendance/today`),
+        authClient.$fetch(`${API_BASE_URL}/holiday/upcoming`, { method: 'POST' }),
+      ]);
+
+      const attData = attRes.data;
       if (attData && (attData as any).success) {
         setAttendanceRecord((attData as any).record);
       }
 
-      // Get Upcoming Holidays
-      const { data: holData } = await authClient.$fetch(`${API_BASE_URL}/holiday/upcoming`, { method: 'POST' });
+      const holData = holRes.data;
       if (holData && (holData as any).success) {
         setHolidays((holData as any).holidays || []);
       }

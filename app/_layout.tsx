@@ -16,12 +16,12 @@ export default function RootLayout() {
   return (
     <>
       <SplashScreenController />
-      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-        <Stack>
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
-          <Stack.Screen name="leave" options={{ headerShown: false }} />
-          {/* <Stack.Screen
+        <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+          <Stack>
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+            <Stack.Screen name="leave" options={{ headerShown: false }} />
+            {/* <Stack.Screen
             name="forgot-password"
             options={{
               title: "Forgot Password",
@@ -36,9 +36,9 @@ export default function RootLayout() {
               headerShown: false,
             }}
           /> */}
-        </Stack>
-        <StatusBar style="auto" />
-      </ThemeProvider>
+          </Stack>
+          <StatusBar style="auto" />
+        </ThemeProvider>
     </>
   );
 }

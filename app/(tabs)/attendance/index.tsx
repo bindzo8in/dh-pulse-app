@@ -4,38 +4,81 @@ import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { authClient } from '@/lib/auth-client';
 import { MaterialIcons } from '@expo/vector-icons';
-import * as Location from 'expo-location';
+// import * as Location from 'expo-location';
 import * as ImagePicker from 'expo-image-picker';
 import { Redirect } from 'expo-router';
+import PermissionGuard from '@/components/permission-guard';
+import { usePermission } from "@/providers/PermissionProvider";
 
 const API_BASE_URL = `${process.env.EXPO_PUBLIC_BETTER_AUTH_SERVER_URL}/api/attendance`;
 
 export default function AttendanceScreen() {
-  const { data: session, isPending } = authClient.useSession();
+  return (
+    <PermissionGuard>
+      <AttendanceContent />
+    </PermissionGuard>
+  );
+}
+
+function LiveClock() {
+  const [time, setTime] = useState(new Date());
   const colorScheme = useColorScheme() ?? 'light';
   const colors = Colors[colorScheme];
   const isDark = colorScheme === 'dark';
-
-  const [time, setTime] = useState(new Date());
-  const [record, setRecord] = useState<any>(null);
-  const [settings, setSettings] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [actionLoading, setActionLoading] = useState(false);
-  const [userWorkMode, setUserWorkMode] = useState<'OFFICE' | 'REMOTE' | 'HYBRID'>('OFFICE');
-  const [currentLocationName, setCurrentLocationName] = useState<string | null>(null);
-
-  const [activeTab, setActiveTab] = useState<'punch' | 'report'>('punch');
-  const [logs, setLogs] = useState<any[]>([]);
-  const [logsLoading, setLogsLoading] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
 
+  return (
+    <View style={{ alignItems: 'center', marginTop: 24, marginBottom: 40 }}>
+      <Text style={[styles.timeText, { color: colors.text }]}>
+        {time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+      </Text>
+      <Text style={[styles.dateText, { color: isDark ? '#ccc' : '#666' }]}>
+        {time.toLocaleDateString([], { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+      </Text>
+    </View>
+  );
+}
+
+function AttendanceContent() {
+  const { data: session, isPending } = authClient.useSession();
+  const {
+    location,
+    refreshLocation,
+  } = usePermission();
+  const colorScheme = useColorScheme() ?? 'light';
+  const colors = Colors[colorScheme];
+  const isDark = colorScheme === 'dark';
+
+  const [record, setRecord] = useState<any>(null);
+  const [settings, setSettings] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [userWorkMode, setUserWorkMode] = useState<'OFFICE' | 'REMOTE' | 'HYBRID'>('OFFICE');
+  // const [currentLocationName, setCurrentLocationName] = useState<string | null>(null);
+
+  const [activeTab, setActiveTab] = useState<'punch' | 'report'>('punch');
+  const [logs, setLogs] = useState<any[]>([]);
+  const [logsLoading, setLogsLoading] = useState(false);
+
+    if (isPending) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background, justifyContent: 'center' }]}>
+        <ActivityIndicator size="large" color={colors.tint} />
+      </View>
+    );
+  }
+
+  if (!session) {
+    return <Redirect href="/account" />;
+  }
+
   useEffect(() => {
     fetchTodayRecord();
-    fetchCurrentLocation();
+    // fetchCurrentLocation();
   }, []);
 
   useEffect(() => {
@@ -82,42 +125,42 @@ export default function AttendanceScreen() {
     }
   };
 
-  const fetchCurrentLocation = async () => {
-    try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') return;
+  // const fetchCurrentLocation = async () => {
+  //   try {
+  //     const { status } = await Location.requestForegroundPermissionsAsync();
+  //     if (status !== 'granted') return;
 
-      const location = await Location.getCurrentPositionAsync({});
-      const geocode = await Location.reverseGeocodeAsync({
-        latitude: location.coords.latitude,
-        longitude: location.coords.longitude,
-      });
+  //     const location = await Location.getCurrentPositionAsync({
+  //       accuracy: Location.Accuracy.High
+  //     });
+  //     setCachedLocation({
+  //       latitude: location.coords.latitude,
+  //       longitude: location.coords.longitude,
+  //     })
+  //     // const geocode = await Location.reverseGeocodeAsync({
+  //     //   latitude: location.coords.latitude,
+  //     //   longitude: location.coords.longitude,
+  //     // });
 
-      if (geocode && geocode.length > 0) {
-        const place = geocode[0];
-        const name = [place.street, place.city, place.region].filter(Boolean).join(', ');
-        setCurrentLocationName(name || 'Unknown Location');
-      }
-    } catch (e) {
-      console.error('Failed to get location', e);
-    }
-  };
+  //     // if (geocode && geocode.length > 0) {
+  //     // const place = geocode[0];
+  //     // const name = [place.street, place.city, place.region].filter(Boolean).join(', ');
+  //     // setCurrentLocationName(name || 'Unknown Location');
+  //     // }
+  //   } catch (e) {
+  //     console.error('Failed to get location', e);
+  //   }
+  // };
 
   const captureSelfie = async () => {
-    const { status } = await ImagePicker.requestCameraPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert('Permission needed', 'Camera permission is required for selfies.');
-      return null;
-    }
-
     const result = await ImagePicker.launchCameraAsync({
       mediaTypes: 'images',
       allowsEditing: false,
-      quality: 0.5,
-      base64: true,
+      quality: 0.3, // Reduced for faster upload
+      base64: false,
     });
 
-    if (result.canceled || !result.assets[0].base64) {
+    if (result.canceled) {
       return null;
     }
 
@@ -126,9 +169,13 @@ export default function AttendanceScreen() {
       const cloudName = process.env.EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME || 'dww8qwwby'; // fallback or env
       const uploadPreset = process.env.EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET || 'crm_upload_preset'; // fallback or env
 
-      const base64Img = `data:image/jpeg;base64,${result.assets[0].base64}`;
+      // const base64Img = `data:image/jpeg;base64,${result.assets[0].base64}`;
       const formData = new FormData();
-      formData.append('file', base64Img);
+      formData.append('file', {
+        uri: result.assets[0].uri,
+        type: 'image/jpeg',
+        name: 'selfie.jpg',
+      } as any);
       formData.append('upload_preset', uploadPreset);
 
       const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
@@ -148,43 +195,43 @@ export default function AttendanceScreen() {
   const handleClockIn = async () => {
     setActionLoading(true);
     try {
-      // 1. Location
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permission needed', 'Location permission is required to clock in.');
-        setActionLoading(false);
+      const latestLocation = await refreshLocation();
+
+      if (!latestLocation) {
+        Alert.alert(
+          "Location Error",
+          "Unable to get your current location."
+        );
         return;
       }
-
-      const location = await Location.getCurrentPositionAsync({});
-
       // 2. Selfie
       const selfieData = await captureSelfie();
+
       if (!selfieData) {
         setActionLoading(false);
         return;
       }
 
       // 3. Submit
-      let locName = currentLocationName;
-      if (!locName) {
-        const geocode = await Location.reverseGeocodeAsync({
-          latitude: location.coords.latitude,
-          longitude: location.coords.longitude,
-        });
-        if (geocode && geocode.length > 0) {
-          const place = geocode[0];
-          locName = [place.street, place.city, place.region].filter(Boolean).join(', ');
-        }
-      }
+      // let locName = currentLocationName;
+      // if (!locName) {
+      //   const geocode = await Location.reverseGeocodeAsync({
+      //     latitude: location.coords.latitude,
+      //     longitude: location.coords.longitude,
+      //   });
+      //   if (geocode && geocode.length > 0) {
+      //     const place = geocode[0];
+      //     locName = [place.street, place.city, place.region].filter(Boolean).join(', ');
+      //   }
+      // }
 
       const { data, error } = await authClient.$fetch(`${API_BASE_URL}/clock-in`, {
         method: 'POST',
         body: {
           workMode: userWorkMode,
-          latitude: location.coords.latitude,
-          longitude: location.coords.longitude,
-          locationName: locName,
+          latitude: latestLocation.coords.latitude,
+          longitude: latestLocation.coords.longitude,
+          // locationName: locName,
           selfieUrl: selfieData.url,
           selfiePublicId: selfieData.publicId,
         },
@@ -239,7 +286,7 @@ export default function AttendanceScreen() {
       if (error) throw error;
 
       if (data && (data as any).success) {
-        fetchTodayRecord();
+        setRecord((data as any).record);
       } else {
         Alert.alert('Error', (data as any)?.error || 'Failed to start break');
       }
@@ -260,7 +307,7 @@ export default function AttendanceScreen() {
       if (error) throw error;
 
       if (data && (data as any).success) {
-        fetchTodayRecord();
+        setRecord((data as any).record);
       } else {
         Alert.alert('Error', (data as any)?.error || 'Failed to end break');
       }
@@ -270,13 +317,7 @@ export default function AttendanceScreen() {
     }
   };
 
-  if (loading) {
-    return (
-      <View style={[styles.container, { backgroundColor: colors.background, justifyContent: 'center' }]}>
-        <ActivityIndicator size="large" color={colors.tint} />
-      </View>
-    );
-  }
+
 
   const isClockedIn = !!record && !record.clockOut;
   const openBreak = record?.breaks?.find((b: any) => !b.breakEnd);
@@ -290,11 +331,7 @@ export default function AttendanceScreen() {
   const totalMinutes = completedLogs.reduce((acc, curr) => acc + (curr.workMinutes || 0), 0);
   const avgHoursPerDay = totalDays > 0 ? (totalMinutes / 60 / totalDays).toFixed(1) : '0';
 
-  if (isPending) return null;
 
-  if (!session) {
-    return <Redirect href="/account" />;
-  }
   return (
     <ScrollView style={[styles.container, { backgroundColor: colors.background }]} contentContainerStyle={{ padding: 24, paddingBottom: 100 }}>
       {/* Tab Switcher */}
@@ -315,14 +352,7 @@ export default function AttendanceScreen() {
 
       {activeTab === 'punch' ? (
         <>
-          <View style={{ alignItems: 'center', marginTop: 24, marginBottom: 40 }}>
-            <Text style={[styles.timeText, { color: colors.text }]}>
-              {time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-            </Text>
-            <Text style={[styles.dateText, { color: isDark ? '#ccc' : '#666' }]}>
-              {time.toLocaleDateString([], { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-            </Text>
-          </View>
+          <LiveClock />
 
           {!isClockedIn && !record?.clockOut && (
             <View style={styles.workModeContainer}>
@@ -335,12 +365,12 @@ export default function AttendanceScreen() {
                 <Text style={[styles.modeText, { color: '#fff' }]}>{userWorkMode}</Text>
               </View>
 
-              {currentLocationName && (
+              {/* {currentLocationName && (
                 <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 12, gap: 6, opacity: 0.8 }}>
                   <MaterialIcons name="location-on" size={16} color={colors.text} />
                   <Text style={{ color: colors.text, fontSize: 14 }}>{currentLocationName}</Text>
                 </View>
-              )}
+              )} */}
             </View>
           )}
 
@@ -515,6 +545,8 @@ export default function AttendanceScreen() {
     </ScrollView>
   );
 }
+
+
 
 const styles = StyleSheet.create({
   container: {
