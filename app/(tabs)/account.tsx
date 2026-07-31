@@ -15,354 +15,10 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { authClient } from '@/lib/auth-client';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors } from '@/constants/theme';
-import { useGlobalSearchParams, useRouter } from 'expo-router';
+import { Redirect, useGlobalSearchParams, useRouter } from 'expo-router';
 
-type AuthMode = 'signin' | 'signup';
-
-function AuthScreen() {
-  const colorScheme = useColorScheme() ?? 'light';
-  const colors = Colors[colorScheme];
-  const isDark = colorScheme === 'dark';
-  const router = useRouter();
-
-  const [mode, setMode] = useState<AuthMode>('signin');
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [rememberMe, setRememberMe] = useState(false);
-  const [agreeTerms, setAgreeTerms] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [isVerificationSent, setIsVerificationSent] = useState(false);
-  const [successMessage, setSuccessMessage] = useState('');
-
-  const params = useGlobalSearchParams();
-
-  useEffect(() => {
-    if (params.verified === 'true') {
-      setSuccessMessage('Email verified successfully! Please sign in.');
-      setMode('signin');
-      setIsVerificationSent(false);
-      
-      const timer = setTimeout(() => {
-        setSuccessMessage('');
-      }, 5000);
-      
-      return () => clearTimeout(timer);
-    }
-  }, [params]);
-
-  const handleSubmit = async () => {
-    setError('');
-    setSuccessMessage('');
-    if (mode === 'signup') {
-      if (password !== confirmPassword) {
-        setError('Passwords do not match');
-        return;
-      }
-      if (!agreeTerms) {
-        setError('You must agree to the Terms and Conditions');
-        return;
-      }
-    }
-    setLoading(true);
-    try {
-      if (mode === 'signup') {
-        const res = await authClient.signUp.email({
-          name,
-          email,
-          password,
-          callbackURL: Linking.createURL('/account', { queryParams: { verified: 'true' } }),
-        });
-        if (res.error) {
-          setError(res.error.message ?? res.error.statusText ?? 'Sign up failed');
-        } else {
-          setIsVerificationSent(true);
-        }
-      } else {
-        const res = await authClient.signIn.email({
-          email,
-          password,
-          rememberMe,
-        });
-        if (res.error) {
-          setError(res.error.message ?? 'Sign in failed');
-        }
-      }
-    } catch (e: any) {
-      setError(e?.message ?? 'Something went wrong');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const dynamicStyles = getDynamicStyles(isDark, colors);
-
-  if (isVerificationSent) {
-    return (
-      <View style={[dynamicStyles.container, { justifyContent: 'center', padding: 24, alignItems: 'center' }]}>
-        <MaterialIcons name="mark-email-unread" size={80} color={colors.tint} style={{ marginBottom: 24 }} />
-        <Text style={dynamicStyles.title}>Check your email</Text>
-        <Text style={[dynamicStyles.subtitle, { textAlign: 'center', marginTop: 8, marginBottom: 32 }]}>
-          We've sent a verification link to {email}. Please check your inbox and verify your account to continue.
-        </Text>
-        <TouchableOpacity
-          style={[dynamicStyles.submitButton, { width: '100%' }]}
-          onPress={() => {
-            setIsVerificationSent(false);
-            setMode('signin');
-          }}
-          activeOpacity={0.8}
-        >
-          <Text style={dynamicStyles.submitText}>Back to Sign In</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
-
-  return (
-    <KeyboardAvoidingView
-      style={dynamicStyles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
-      <ScrollView
-        contentContainerStyle={dynamicStyles.scrollContent}
-        keyboardShouldPersistTaps="handled"
-      >
-        <View style={dynamicStyles.header}>
-          <Text style={dynamicStyles.title}>
-            {mode === 'signin' ? 'Welcome Back' : 'Create Account'}
-          </Text>
-          <Text style={dynamicStyles.subtitle}>
-            {mode === 'signin'
-              ? 'Sign in to access your account'
-              : 'Sign up to get started'}
-          </Text>
-        </View>
-
-        <View style={dynamicStyles.card}>
-          {/* Mode Toggle */}
-          <View style={dynamicStyles.toggleContainer}>
-            <TouchableOpacity
-              style={[
-                dynamicStyles.toggleButton,
-                mode === 'signin' && dynamicStyles.toggleButtonActive,
-              ]}
-              onPress={() => { setMode('signin'); setError(''); setSuccessMessage(''); }}
-            >
-              <Text
-                style={[
-                  dynamicStyles.toggleText,
-                  mode === 'signin' && dynamicStyles.toggleTextActive,
-                ]}
-              >
-                Sign In
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                dynamicStyles.toggleButton,
-                mode === 'signup' && dynamicStyles.toggleButtonActive,
-              ]}
-              onPress={() => { setMode('signup'); setError(''); setSuccessMessage(''); }}
-            >
-              <Text
-                style={[
-                  dynamicStyles.toggleText,
-                  mode === 'signup' && dynamicStyles.toggleTextActive,
-                ]}
-              >
-                Sign Up
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Success Message */}
-          {successMessage ? (
-            <View style={[dynamicStyles.errorContainer, { backgroundColor: isDark ? '#1a3a2a' : '#d1fae5' }]}>
-              <Text style={[dynamicStyles.errorText, { color: isDark ? '#6ee7b7' : '#047857' }]}>
-                {successMessage}
-              </Text>
-            </View>
-          ) : null}
-
-          {/* Name field (sign up only) */}
-          {mode === 'signup' && (
-            <View style={dynamicStyles.inputGroup}>
-              <Text style={dynamicStyles.label}>Name</Text>
-              <TextInput
-                style={dynamicStyles.input}
-                placeholder="Your name"
-                placeholderTextColor={isDark ? '#555' : '#aaa'}
-                value={name}
-                onChangeText={setName}
-                autoCapitalize="words"
-              />
-            </View>
-          )}
-
-          {/* Email */}
-          <View style={dynamicStyles.inputGroup}>
-            <Text style={dynamicStyles.label}>Email</Text>
-            <TextInput
-              style={dynamicStyles.input}
-              placeholder="you@example.com"
-              placeholderTextColor={isDark ? '#555' : '#aaa'}
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-          </View>
-
-          {/* Password */}
-          <View style={dynamicStyles.inputGroup}>
-            <Text style={dynamicStyles.label}>Password</Text>
-            <View style={dynamicStyles.passwordContainer}>
-              <TextInput
-                style={dynamicStyles.passwordInput}
-                placeholder="••••••••"
-                placeholderTextColor={isDark ? '#555' : '#aaa'}
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry={!showPassword}
-              />
-              {password.length > 0 && (
-                <TouchableOpacity
-                  style={dynamicStyles.eyeButton}
-                  onPress={() => setShowPassword(!showPassword)}
-                  activeOpacity={0.6}
-                >
-                  <MaterialIcons
-                    name={showPassword ? 'visibility' : 'visibility-off'}
-                    size={20}
-                    color={colors.icon}
-                  />
-                </TouchableOpacity>
-              )}
-            </View>
-            
-            {/* Forgot Password Link */}
-            {mode === 'signin' && (
-              <TouchableOpacity 
-                style={dynamicStyles.forgotPasswordButton} 
-                onPress={() => router.push('/forgot-password')}
-              >
-                <Text style={dynamicStyles.forgotPasswordText}>Forgot Password?</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-
-          {/* Confirm Password (sign up only) */}
-          {mode === 'signup' && (
-            <View style={dynamicStyles.inputGroup}>
-              <Text style={dynamicStyles.label}>Confirm Password</Text>
-              <View style={dynamicStyles.passwordContainer}>
-                <TextInput
-                  style={dynamicStyles.passwordInput}
-                  placeholder="••••••••"
-                  placeholderTextColor={isDark ? '#555' : '#aaa'}
-                  value={confirmPassword}
-                  onChangeText={setConfirmPassword}
-                  secureTextEntry={!showConfirmPassword}
-                />
-                {confirmPassword.length > 0 && (
-                  <TouchableOpacity
-                    style={dynamicStyles.eyeButton}
-                    onPress={() => setShowConfirmPassword(!showConfirmPassword)}
-                    activeOpacity={0.6}
-                  >
-                    <MaterialIcons
-                      name={showConfirmPassword ? 'visibility' : 'visibility-off'}
-                      size={20}
-                      color={colors.icon}
-                    />
-                  </TouchableOpacity>
-                )}
-              </View>
-            </View>
-          )}
-
-          {/* Agree to Terms (sign up only) */}
-          {mode === 'signup' && (
-            <TouchableOpacity
-              style={dynamicStyles.rememberMeRow}
-              onPress={() => setAgreeTerms(!agreeTerms)}
-              activeOpacity={0.7}
-            >
-              <View
-                style={[
-                  dynamicStyles.checkbox,
-                  agreeTerms && dynamicStyles.checkboxChecked,
-                ]}
-              >
-                {agreeTerms && (
-                  <Text style={dynamicStyles.checkmark}>✓</Text>
-                )}
-              </View>
-              <Text style={dynamicStyles.rememberMeText}>
-                I agree to the{' '}
-                <Text style={dynamicStyles.termsLink}>Terms and Conditions</Text>
-                <Text style={dynamicStyles.requiredStar}>*</Text>
-              </Text>
-            </TouchableOpacity>
-          )}
-
-          {/* Remember Me (sign in only) */}
-          {mode === 'signin' && (
-            <TouchableOpacity
-              style={dynamicStyles.rememberMeRow}
-              onPress={() => setRememberMe(!rememberMe)}
-              activeOpacity={0.7}
-            >
-              <View
-                style={[
-                  dynamicStyles.checkbox,
-                  rememberMe && dynamicStyles.checkboxChecked,
-                ]}
-              >
-                {rememberMe && (
-                  <Text style={dynamicStyles.checkmark}>✓</Text>
-                )}
-              </View>
-              <Text style={dynamicStyles.rememberMeText}>Remember me</Text>
-            </TouchableOpacity>
-          )}
-
-          {/* Error */}
-          {error ? (
-            <View style={dynamicStyles.errorContainer}>
-              <Text style={dynamicStyles.errorText}>{error}</Text>
-            </View>
-          ) : null}
-
-          {/* Submit */}
-          <TouchableOpacity
-            style={[dynamicStyles.submitButton, loading && dynamicStyles.submitButtonDisabled]}
-            onPress={handleSubmit}
-            disabled={loading}
-            activeOpacity={0.8}
-          >
-            {loading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={dynamicStyles.submitText}>
-                {mode === 'signin' ? 'Sign In' : 'Create Account'}
-              </Text>
-            )}
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
-  );
-}
-
-function AccountDetails() {
-  const { data: session, refetch } = authClient.useSession();
+function AccountDetails({ session }: { session: any }) {
+  const { refetch } = authClient.useSession();
   const colorScheme = useColorScheme() ?? 'light';
   const colors = Colors[colorScheme];
   const isDark = colorScheme === 'dark';
@@ -400,12 +56,12 @@ function AccountDetails() {
   const handleUpdateProfile = async () => {
     setUpdateError('');
     setUpdateSuccess('');
-    
+
     if (!editName.trim()) {
       setUpdateError('Name cannot be empty');
       return;
     }
-    
+
     if (editName === user?.name) {
       setIsEditing(false);
       return;
@@ -416,7 +72,7 @@ function AccountDetails() {
       const res = await authClient.updateUser({
         name: editName,
       });
-      
+
       if (res.error) {
         setUpdateError(res.error.message ?? 'Failed to update profile');
       } else {
@@ -424,7 +80,7 @@ function AccountDetails() {
         setIsEditing(false);
         // Refresh session to get updated user data
         await refetch();
-        
+
         setTimeout(() => setUpdateSuccess(''), 3000);
       }
     } catch (e: any) {
@@ -437,7 +93,7 @@ function AccountDetails() {
   const handleChangePassword = async () => {
     setPasswordError('');
     setPasswordSuccess('');
-    
+
     if (!currentPassword) {
       setPasswordError('Please enter your current password');
       return;
@@ -458,7 +114,7 @@ function AccountDetails() {
         newPassword,
         revokeOtherSessions: true,
       });
-      
+
       if (res.error) {
         setPasswordError(res.error.message ?? 'Failed to change password');
       } else {
@@ -467,7 +123,7 @@ function AccountDetails() {
         setCurrentPassword('');
         setNewPassword('');
         setConfirmNewPassword('');
-        
+
         setTimeout(() => setPasswordSuccess(''), 3000);
       }
     } catch (e: any) {
@@ -499,11 +155,11 @@ function AccountDetails() {
           <Text style={dynamicStyles.avatarText}>
             {user?.name
               ? user.name
-                  .split(' ')
-                  .map((w: string) => w[0])
-                  .join('')
-                  .toUpperCase()
-                  .slice(0, 2)
+                .split(' ')
+                .map((w: string) => w[0])
+                .join('')
+                .toUpperCase()
+                .slice(0, 2)
               : '?'}
           </Text>
         </View>
@@ -527,7 +183,7 @@ function AccountDetails() {
             <Text style={dynamicStyles.errorText}>{updateError}</Text>
           </View>
         ) : null}
-        
+
         {updateSuccess ? (
           <View style={[dynamicStyles.errorContainer, { backgroundColor: isDark ? '#1a3a2a' : '#d1fae5' }]}>
             <Text style={[dynamicStyles.errorText, { color: isDark ? '#6ee7b7' : '#047857' }]}>
@@ -590,7 +246,7 @@ function AccountDetails() {
             >
               <Text style={[dynamicStyles.editActionText, { color: colors.text }]}>Cancel</Text>
             </TouchableOpacity>
-            
+
             <TouchableOpacity
               style={[dynamicStyles.editActionButton, { backgroundColor: colors.tint }]}
               onPress={handleUpdateProfile}
@@ -622,7 +278,7 @@ function AccountDetails() {
             <Text style={dynamicStyles.errorText}>{passwordError}</Text>
           </View>
         ) : null}
-        
+
         {passwordSuccess ? (
           <View style={[dynamicStyles.errorContainer, { backgroundColor: isDark ? '#1a3a2a' : '#d1fae5' }]}>
             <Text style={[dynamicStyles.errorText, { color: isDark ? '#6ee7b7' : '#047857' }]}>
@@ -658,8 +314,8 @@ function AccountDetails() {
                   </TouchableOpacity>
                 )}
               </View>
-              <TouchableOpacity 
-                style={dynamicStyles.forgotPasswordButton} 
+              <TouchableOpacity
+                style={dynamicStyles.forgotPasswordButton}
                 onPress={() => router.push('/forgot-password')}
               >
                 <Text style={dynamicStyles.forgotPasswordText}>Forgot Password?</Text>
@@ -734,7 +390,7 @@ function AccountDetails() {
               >
                 <Text style={[dynamicStyles.editActionText, { color: colors.text }]}>Cancel</Text>
               </TouchableOpacity>
-              
+
               <TouchableOpacity
                 style={[dynamicStyles.editActionButton, { backgroundColor: colors.tint }]}
                 onPress={handleChangePassword}
@@ -780,28 +436,26 @@ export default function AccountScreen() {
   const { data: session, isPending } = authClient.useSession();
   const colorScheme = useColorScheme() ?? 'light';
   const colors = Colors[colorScheme];
-  const isDark = colorScheme === 'dark';
-  
-  const [isReady, setIsReady] = useState(false);
-  useEffect(() => {
-    if (!isPending) {
-      setIsReady(true);
-    }
-  }, [isPending]);
 
-  if (!isReady) {
+  if (isPending) {
     return (
-      <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
+      <View
+        style={[
+          styles.loadingContainer,
+          { backgroundColor: colors.background },
+        ]}
+      >
         <ActivityIndicator size="large" color={colors.tint} />
       </View>
     );
   }
 
-  if (session?.user) {
-    return <AccountDetails />;
-  }
+if (!session || !session.user) {
+  return <Redirect href="/sign-up-in" />;
+}
 
-  return <AuthScreen />;
+  return <AccountDetails session={session} />;
+
 }
 
 function getDynamicStyles(isDark: boolean, colors: typeof Colors.light) {

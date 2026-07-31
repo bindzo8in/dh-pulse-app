@@ -7,8 +7,8 @@ export const authClient = createAuthClient({
     baseURL: process.env.EXPO_PUBLIC_BETTER_AUTH_SERVER_URL, // Base URL of your Better Auth backend.
     plugins: [
         expoClient({
-            scheme: "b8pulse",
-            storagePrefix: "b8pulse",
+            scheme: "dhpulse",
+            storagePrefix: "dhpulse",
             storage: SecureStore,
         }) as unknown as BetterAuthPlugin
     ]

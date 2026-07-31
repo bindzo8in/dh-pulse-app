@@ -6,10 +6,12 @@ import { authClient } from '@/lib/auth-client';
 import { MaterialIcons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import * as ImagePicker from 'expo-image-picker';
+import { Redirect } from 'expo-router';
 
 const API_BASE_URL = `${process.env.EXPO_PUBLIC_BETTER_AUTH_SERVER_URL}/api/attendance`;
 
 export default function AttendanceScreen() {
+  const { data: session, isPending } = authClient.useSession();
   const colorScheme = useColorScheme() ?? 'light';
   const colors = Colors[colorScheme];
   const isDark = colorScheme === 'dark';
@@ -64,7 +66,7 @@ export default function AttendanceScreen() {
     try {
       const { data, error } = await authClient.$fetch(`${API_BASE_URL}/today`);
       if (error) throw error;
-      
+
       if (data && (data as any).success) {
         const payload = data as any;
         setRecord(payload.record);
@@ -84,7 +86,7 @@ export default function AttendanceScreen() {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') return;
-      
+
       const location = await Location.getCurrentPositionAsync({});
       const geocode = await Location.reverseGeocodeAsync({
         latitude: location.coords.latitude,
@@ -153,9 +155,9 @@ export default function AttendanceScreen() {
         setActionLoading(false);
         return;
       }
-      
+
       const location = await Location.getCurrentPositionAsync({});
-      
+
       // 2. Selfie
       const selfieData = await captureSelfie();
       if (!selfieData) {
@@ -288,6 +290,11 @@ export default function AttendanceScreen() {
   const totalMinutes = completedLogs.reduce((acc, curr) => acc + (curr.workMinutes || 0), 0);
   const avgHoursPerDay = totalDays > 0 ? (totalMinutes / 60 / totalDays).toFixed(1) : '0';
 
+  if (isPending) return null;
+
+  if (!session) {
+    return <Redirect href="/account" />;
+  }
   return (
     <ScrollView style={[styles.container, { backgroundColor: colors.background }]} contentContainerStyle={{ padding: 24, paddingBottom: 100 }}>
       {/* Tab Switcher */}
@@ -317,98 +324,98 @@ export default function AttendanceScreen() {
             </Text>
           </View>
 
-      {!isClockedIn && !record?.clockOut && (
-        <View style={styles.workModeContainer}>
-          <Text style={[styles.label, { color: colors.text, marginBottom: 8 }]}>Assigned Work Mode</Text>
-          <View style={[styles.modeButton, { backgroundColor: colors.tint, borderColor: colors.tint }]}>
-            <MaterialIcons 
-              name={userWorkMode === 'OFFICE' ? 'business' : userWorkMode === 'REMOTE' ? 'home-work' : 'devices'} 
-              size={20} color="#fff" 
-            />
-            <Text style={[styles.modeText, { color: '#fff' }]}>{userWorkMode}</Text>
-          </View>
+          {!isClockedIn && !record?.clockOut && (
+            <View style={styles.workModeContainer}>
+              <Text style={[styles.label, { color: colors.text, marginBottom: 8 }]}>Assigned Work Mode</Text>
+              <View style={[styles.modeButton, { backgroundColor: colors.tint, borderColor: colors.tint }]}>
+                <MaterialIcons
+                  name={userWorkMode === 'OFFICE' ? 'business' : userWorkMode === 'REMOTE' ? 'home-work' : 'devices'}
+                  size={20} color="#fff"
+                />
+                <Text style={[styles.modeText, { color: '#fff' }]}>{userWorkMode}</Text>
+              </View>
 
-          {currentLocationName && (
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 12, gap: 6, opacity: 0.8 }}>
-              <MaterialIcons name="location-on" size={16} color={colors.text} />
-              <Text style={{ color: colors.text, fontSize: 14 }}>{currentLocationName}</Text>
+              {currentLocationName && (
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 12, gap: 6, opacity: 0.8 }}>
+                  <MaterialIcons name="location-on" size={16} color={colors.text} />
+                  <Text style={{ color: colors.text, fontSize: 14 }}>{currentLocationName}</Text>
+                </View>
+              )}
             </View>
           )}
-        </View>
-      )}
 
-      <View style={styles.actionContainer}>
-        {record?.clockOut ? (
-          <View style={[styles.statusCard, { backgroundColor: isDark ? '#1a3a2a' : '#d1fae5' }]}>
-            <MaterialIcons name="check-circle" size={32} color={isDark ? '#6ee7b7' : '#047857'} />
-            <Text style={[styles.statusTitle, { color: isDark ? '#6ee7b7' : '#047857' }]}>Shift Completed</Text>
-            <Text style={[styles.statusSub, { color: isDark ? '#6ee7b7' : '#047857' }]}>You have successfully clocked out for the day.</Text>
-          </View>
-        ) : !isClockedIn ? (
-          <TouchableOpacity 
-            style={[styles.mainButton, { backgroundColor: colors.tint }]} 
-            onPress={handleClockIn}
-            disabled={actionLoading}
-          >
-            {actionLoading ? <ActivityIndicator color="#fff" /> : (
-              <>
-                <MaterialIcons name="login" size={24} color="#fff" />
-                <Text style={styles.mainButtonText}>Clock In</Text>
-              </>
-            )}
-          </TouchableOpacity>
-        ) : (
-          <View style={{ gap: 16 }}>
-            <View style={[styles.statusCard, { backgroundColor: isDark ? '#3a3d40' : '#f8f9fa' }]}>
-              <Text style={[styles.statusTitle, { color: colors.text }]}>Currently {isOnBreak ? 'On Break' : 'Clocked In'}</Text>
-              <Text style={[styles.statusSub, { color: isDark ? '#ccc' : '#666' }]}>
-                Started at {new Date(record.clockIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-              </Text>
-            </View>
-
-            {isOnBreak ? (
-              <TouchableOpacity 
-                style={[styles.secondaryButton, { backgroundColor: '#f59e0b' }]} 
-                onPress={handleEndBreak}
+          <View style={styles.actionContainer}>
+            {record?.clockOut ? (
+              <View style={[styles.statusCard, { backgroundColor: isDark ? '#1a3a2a' : '#d1fae5' }]}>
+                <MaterialIcons name="check-circle" size={32} color={isDark ? '#6ee7b7' : '#047857'} />
+                <Text style={[styles.statusTitle, { color: isDark ? '#6ee7b7' : '#047857' }]}>Shift Completed</Text>
+                <Text style={[styles.statusSub, { color: isDark ? '#6ee7b7' : '#047857' }]}>You have successfully clocked out for the day.</Text>
+              </View>
+            ) : !isClockedIn ? (
+              <TouchableOpacity
+                style={[styles.mainButton, { backgroundColor: colors.tint }]}
+                onPress={handleClockIn}
                 disabled={actionLoading}
               >
                 {actionLoading ? <ActivityIndicator color="#fff" /> : (
                   <>
-                    <MaterialIcons name="free-breakfast" size={24} color="#fff" />
-                    <Text style={styles.mainButtonText}>End Break</Text>
+                    <MaterialIcons name="login" size={24} color="#fff" />
+                    <Text style={styles.mainButtonText}>Clock In</Text>
                   </>
                 )}
               </TouchableOpacity>
             ) : (
-              <TouchableOpacity 
-                style={[styles.secondaryButton, { backgroundColor: '#3b82f6' }]} 
-                onPress={handleStartBreak}
-                disabled={actionLoading}
-              >
-                {actionLoading ? <ActivityIndicator color="#fff" /> : (
-                  <>
-                    <MaterialIcons name="free-breakfast" size={24} color="#fff" />
-                    <Text style={styles.mainButtonText}>Start Break</Text>
-                  </>
-                )}
-              </TouchableOpacity>
-            )}
+              <View style={{ gap: 16 }}>
+                <View style={[styles.statusCard, { backgroundColor: isDark ? '#3a3d40' : '#f8f9fa' }]}>
+                  <Text style={[styles.statusTitle, { color: colors.text }]}>Currently {isOnBreak ? 'On Break' : 'Clocked In'}</Text>
+                  <Text style={[styles.statusSub, { color: isDark ? '#ccc' : '#666' }]}>
+                    Started at {new Date(record.clockIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </Text>
+                </View>
 
-            <TouchableOpacity 
-              style={[styles.mainButton, { backgroundColor: '#dc2626', marginTop: 16 }]} 
-              onPress={handleClockOut}
-              disabled={actionLoading || isOnBreak}
-            >
-              {actionLoading ? <ActivityIndicator color="#fff" /> : (
-                <>
-                  <MaterialIcons name="logout" size={24} color="#fff" />
-                  <Text style={styles.mainButtonText}>Clock Out</Text>
-                </>
-              )}
-            </TouchableOpacity>
+                {isOnBreak ? (
+                  <TouchableOpacity
+                    style={[styles.secondaryButton, { backgroundColor: '#f59e0b' }]}
+                    onPress={handleEndBreak}
+                    disabled={actionLoading}
+                  >
+                    {actionLoading ? <ActivityIndicator color="#fff" /> : (
+                      <>
+                        <MaterialIcons name="free-breakfast" size={24} color="#fff" />
+                        <Text style={styles.mainButtonText}>End Break</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity
+                    style={[styles.secondaryButton, { backgroundColor: '#3b82f6' }]}
+                    onPress={handleStartBreak}
+                    disabled={actionLoading}
+                  >
+                    {actionLoading ? <ActivityIndicator color="#fff" /> : (
+                      <>
+                        <MaterialIcons name="free-breakfast" size={24} color="#fff" />
+                        <Text style={styles.mainButtonText}>Start Break</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                )}
+
+                <TouchableOpacity
+                  style={[styles.mainButton, { backgroundColor: '#dc2626', marginTop: 16 }]}
+                  onPress={handleClockOut}
+                  disabled={actionLoading || isOnBreak}
+                >
+                  {actionLoading ? <ActivityIndicator color="#fff" /> : (
+                    <>
+                      <MaterialIcons name="logout" size={24} color="#fff" />
+                      <Text style={styles.mainButtonText}>Clock Out</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
-        )}
-      </View>
         </>
       ) : (
         <View style={styles.reportContainer}>
@@ -421,7 +428,7 @@ export default function AttendanceScreen() {
               {/* Overall Summary Card */}
               <View style={[styles.summaryCard, { backgroundColor: isDark ? '#1c1c1e' : '#fff', borderColor: isDark ? '#333' : '#e5e5ea' }]}>
                 <Text style={[styles.summaryTitle, { color: colors.text }]}>Overall Performance</Text>
-                
+
                 <View style={styles.summaryGrid}>
                   <View style={styles.summaryItem}>
                     <Text style={[styles.summaryValue, { color: '#10b981' }]}>{totalPresent}</Text>
@@ -448,59 +455,59 @@ export default function AttendanceScreen() {
                 <Text style={[styles.noLogsText, { color: isDark ? '#aaa' : '#666', marginTop: 16 }]}>No completed shifts yet.</Text>
               ) : (
                 completedLogs.map((log) => {
-              const logDate = new Date(log.date);
-              const hrs = Math.floor(log.workMinutes / 60);
-              const mins = log.workMinutes % 60;
-              return (
-                <View key={log.id} style={[styles.logCard, { backgroundColor: isDark ? '#1c1c1e' : '#fff', borderColor: isDark ? '#333' : '#e5e5ea' }]}>
-                  <View style={styles.logHeader}>
-                    <Text style={[styles.logDate, { color: colors.text }]}>
-                      {logDate.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
-                    </Text>
-                    <View style={[styles.statusBadge, 
-                      log.status === 'PRESENT' ? { backgroundColor: '#10b98120' } : 
-                      log.status === 'LATE' ? { backgroundColor: '#f59e0b20' } : 
-                      { backgroundColor: '#ef444420' }
-                    ]}>
-                      <Text style={[styles.statusBadgeText, 
-                        log.status === 'PRESENT' ? { color: '#10b981' } : 
-                        log.status === 'LATE' ? { color: '#f59e0b' } : 
-                        { color: '#ef4444' }
-                      ]}>{log.status}</Text>
+                  const logDate = new Date(log.date);
+                  const hrs = Math.floor(log.workMinutes / 60);
+                  const mins = log.workMinutes % 60;
+                  return (
+                    <View key={log.id} style={[styles.logCard, { backgroundColor: isDark ? '#1c1c1e' : '#fff', borderColor: isDark ? '#333' : '#e5e5ea' }]}>
+                      <View style={styles.logHeader}>
+                        <Text style={[styles.logDate, { color: colors.text }]}>
+                          {logDate.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
+                        </Text>
+                        <View style={[styles.statusBadge,
+                        log.status === 'PRESENT' ? { backgroundColor: '#10b98120' } :
+                          log.status === 'LATE' ? { backgroundColor: '#f59e0b20' } :
+                            { backgroundColor: '#ef444420' }
+                        ]}>
+                          <Text style={[styles.statusBadgeText,
+                          log.status === 'PRESENT' ? { color: '#10b981' } :
+                            log.status === 'LATE' ? { color: '#f59e0b' } :
+                              { color: '#ef4444' }
+                          ]}>{log.status}</Text>
+                        </View>
+                      </View>
+
+                      <View style={styles.logDetails}>
+                        <View style={styles.logDetailRow}>
+                          <MaterialIcons name="login" size={16} color={colors.icon} />
+                          <Text style={[styles.logDetailText, { color: isDark ? '#ccc' : '#666' }]}>
+                            In: {new Date(log.clockIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </Text>
+                        </View>
+                        <View style={styles.logDetailRow}>
+                          <MaterialIcons name="logout" size={16} color={colors.icon} />
+                          <Text style={[styles.logDetailText, { color: isDark ? '#ccc' : '#666' }]}>
+                            Out: {log.clockOut ? new Date(log.clockOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'}
+                          </Text>
+                        </View>
+                      </View>
+
+                      <View style={styles.logFooter}>
+                        <Text style={[styles.workHoursText, { color: colors.text }]}>
+                          <MaterialIcons name="schedule" size={16} color={colors.tint} /> {hrs}h {mins}m
+                        </Text>
+                        <Text style={[styles.workModeLabel, { color: isDark ? '#888' : '#999' }]}>{log.workMode}</Text>
+                      </View>
+                      {log.locationName && (
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 }}>
+                          <MaterialIcons name="location-on" size={12} color={isDark ? '#888' : '#999'} />
+                          <Text style={{ fontSize: 12, color: isDark ? '#888' : '#999' }}>{log.locationName}</Text>
+                        </View>
+                      )}
                     </View>
-                  </View>
-                  
-                  <View style={styles.logDetails}>
-                    <View style={styles.logDetailRow}>
-                      <MaterialIcons name="login" size={16} color={colors.icon} />
-                      <Text style={[styles.logDetailText, { color: isDark ? '#ccc' : '#666' }]}>
-                        In: {new Date(log.clockIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </Text>
-                    </View>
-                    <View style={styles.logDetailRow}>
-                      <MaterialIcons name="logout" size={16} color={colors.icon} />
-                      <Text style={[styles.logDetailText, { color: isDark ? '#ccc' : '#666' }]}>
-                        Out: {log.clockOut ? new Date(log.clockOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'}
-                      </Text>
-                    </View>
-                  </View>
-                  
-                  <View style={styles.logFooter}>
-                    <Text style={[styles.workHoursText, { color: colors.text }]}>
-                      <MaterialIcons name="schedule" size={16} color={colors.tint} /> {hrs}h {mins}m
-                    </Text>
-                    <Text style={[styles.workModeLabel, { color: isDark ? '#888' : '#999' }]}>{log.workMode}</Text>
-                  </View>
-                  {log.locationName && (
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 }}>
-                      <MaterialIcons name="location-on" size={12} color={isDark ? '#888' : '#999'} />
-                      <Text style={{ fontSize: 12, color: isDark ? '#888' : '#999' }}>{log.locationName}</Text>
-                    </View>
-                  )}
-                </View>
-              );
-            })
-            )}
+                  );
+                })
+              )}
             </>
           )}
         </View>

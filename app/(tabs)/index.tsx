@@ -4,18 +4,19 @@ import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { authClient } from '@/lib/auth-client';
 import { MaterialIcons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { Redirect, useRouter } from 'expo-router';
 import { format } from 'date-fns';
 
 const API_BASE_URL = `${process.env.EXPO_PUBLIC_BETTER_AUTH_SERVER_URL}/api`;
 
 export default function HomeScreen() {
+  const { data: session, isPending } = authClient.useSession();
+
   const colorScheme = useColorScheme() ?? 'light';
   const colors = Colors[colorScheme];
   const isDark = colorScheme === 'dark';
   const router = useRouter();
 
-  const [session, setSession] = useState<any>(null);
   const [attendanceRecord, setAttendanceRecord] = useState<any>(null);
   const [holidays, setHolidays] = useState<any[]>([]);
   const [refreshing, setRefreshing] = useState(false);
@@ -27,10 +28,6 @@ export default function HomeScreen() {
   const fetchData = async () => {
     setRefreshing(true);
     try {
-      // Get User Session
-      const { data: sessionData } = await authClient.getSession();
-      setSession(sessionData);
-
       // Get Today's Attendance
       const { data: attData } = await authClient.$fetch(`${API_BASE_URL}/attendance/today`);
       if (attData && (attData as any).success) {
@@ -52,8 +49,14 @@ export default function HomeScreen() {
   const isClockedIn = attendanceRecord && !attendanceRecord.clockOut;
   const todayDate = format(new Date(), 'EEEE, MMMM do');
 
+  if (isPending) return null;
+
+  if (!session) {
+    return <Redirect href="/account" />;
+  }
+
   return (
-    <ScrollView 
+    <ScrollView
       style={[styles.container, { backgroundColor: colors.background }]}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={fetchData} tintColor={colors.tint} />}
     >
@@ -72,7 +75,7 @@ export default function HomeScreen() {
         {/* Today's Status Card */}
         <View style={[styles.card, { backgroundColor: isDark ? '#1c1c1e' : '#fff' }]}>
           <Text style={[styles.cardTitle, { color: colors.text }]}>Today's Status</Text>
-          
+
           <View style={styles.statusRow}>
             {isClockedIn ? (
               <View style={styles.statusBadge}>
@@ -93,7 +96,7 @@ export default function HomeScreen() {
             )}
           </View>
 
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.primaryButton, { backgroundColor: colors.tint }]}
             onPress={() => router.push('/(tabs)/attendance')}
           >
@@ -105,7 +108,7 @@ export default function HomeScreen() {
         {/* Quick Links Grid */}
         <Text style={[styles.sectionTitle, { color: colors.text }]}>Quick Actions</Text>
         <View style={styles.grid}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.gridItem, { backgroundColor: isDark ? '#1c1c1e' : '#fff' }]}
             onPress={() => router.push('/leave')}
           >
@@ -121,7 +124,7 @@ export default function HomeScreen() {
             </View>
             <Text style={[styles.gridItemText, { color: colors.text }]}>Payslips</Text>
           </TouchableOpacity>
-          
+
           <TouchableOpacity style={[styles.gridItem, { backgroundColor: isDark ? '#1c1c1e' : '#fff' }]}>
             <View style={[styles.iconWrapper, { backgroundColor: '#10b98120' }]}>
               <MaterialIcons name="campaign" size={28} color="#10b981" />
@@ -137,10 +140,10 @@ export default function HomeScreen() {
             <Text style={[styles.emptyText, { color: isDark ? '#888' : '#666' }]}>No upcoming holidays.</Text>
           ) : (
             holidays.map((hol, idx) => (
-              <View 
-                key={hol.id} 
+              <View
+                key={hol.id}
                 style={[
-                  styles.holidayRow, 
+                  styles.holidayRow,
                   idx < holidays.length - 1 && { borderBottomWidth: 1, borderBottomColor: isDark ? '#333' : '#eee' }
                 ]}
               >

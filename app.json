@@ -1,12 +1,12 @@
 {
   "expo": {
-    "name": "b8-pulse",
-    "slug": "b8-pulse",
+    "name": "dh-pulse",
+    "slug": "design-hub-crm",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "b8pulse",
-    "userInterfaceStyle": "automatic",
+    "scheme": "dhpulse",
+    "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true
@@ -19,7 +19,8 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.designhubone.pulse"
     },
     "web": {
       "output": "static",
@@ -39,11 +40,19 @@
           }
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      "@react-native-community/datetimepicker"
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "8bc9d8a7-4ff2-4f61-94ba-7653b1696df0"
+      }
+    },
+    "owner": "design-hubs-team"
   }
 }

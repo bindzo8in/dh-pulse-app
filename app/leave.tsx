@@ -6,6 +6,7 @@ import { authClient } from '@/lib/auth-client';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { format } from 'date-fns';
+import DateTimePicker from "@react-native-community/datetimepicker";
 
 const API_BASE_URL = `${process.env.EXPO_PUBLIC_BETTER_AUTH_SERVER_URL}/api`;
 
@@ -21,8 +22,10 @@ export default function LeaveScreen() {
 
   // Form state
   const [type, setType] = useState('CASUAL');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  const [showStartPicker, setShowStartPicker] = useState(false);
+  const [showEndPicker, setShowEndPicker] = useState(false);
+  const [startDate, setStartDate] = useState<Date | null>(null);
+  const [endDate, setEndDate] = useState<Date | null>(null);
   const [reason, setReason] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -56,13 +59,18 @@ export default function LeaveScreen() {
     try {
       const { data } = await authClient.$fetch(`${API_BASE_URL}/leave/submit`, {
         method: 'POST',
-        body: { type, startDate, endDate, reason }
+        body: {
+          type,
+          startDate: format(startDate!, "yyyy-MM-dd"),
+          endDate: format(endDate!, "yyyy-MM-dd"),
+          reason
+        }
       });
 
       if (data && (data as any).success) {
         Alert.alert('Success', 'Leave request submitted successfully');
-        setStartDate('');
-        setEndDate('');
+        setStartDate(null);
+        setEndDate(null);
         setReason('');
         setActiveTab('history');
       } else {
@@ -88,13 +96,13 @@ export default function LeaveScreen() {
 
       {/* Tabs */}
       <View style={[styles.tabs, { backgroundColor: isDark ? '#1c1c1e' : '#fff' }]}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={[styles.tab, activeTab === 'request' && { borderBottomColor: colors.tint, borderBottomWidth: 3 }]}
           onPress={() => setActiveTab('request')}
         >
           <Text style={[styles.tabText, { color: activeTab === 'request' ? colors.tint : colors.text }]}>Request Leave</Text>
         </TouchableOpacity>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={[styles.tab, activeTab === 'history' && { borderBottomColor: colors.tint, borderBottomWidth: 3 }]}
           onPress={() => setActiveTab('history')}
         >
@@ -109,7 +117,7 @@ export default function LeaveScreen() {
             <Text style={[styles.label, { color: colors.text }]}>Leave Type</Text>
             <View style={styles.typeRow}>
               {['CASUAL', 'SICK', 'ANNUAL', 'UNPAID'].map(t => (
-                <TouchableOpacity 
+                <TouchableOpacity
                   key={t}
                   style={[styles.typeChip, type === t ? { backgroundColor: colors.tint } : { backgroundColor: isDark ? '#333' : '#eee' }]}
                   onPress={() => setType(t)}
@@ -120,26 +128,120 @@ export default function LeaveScreen() {
             </View>
 
             <Text style={[styles.label, { color: colors.text }]}>Start Date (YYYY-MM-DD)</Text>
-            <TextInput 
-              style={[styles.input, { color: colors.text, borderColor: isDark ? '#333' : '#ddd' }]} 
+            <TouchableOpacity
+              style={[
+                styles.input,
+                {
+                  borderColor: isDark ? "#333" : "#ddd",
+                  flexDirection: "row",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }
+              ]}
+              onPress={() => setShowStartPicker(true)}
+            >
+              <Text
+                style={{
+                  color: startDate ? colors.text : isDark ? "#666" : "#999",
+                  fontSize: 16,
+                }}
+              >
+                {startDate
+                  ? format(startDate, "yyyy-MM-dd")
+                  : "Select start date"}
+              </Text>
+              <MaterialIcons
+                name="calendar-month"
+                size={22}
+                color={colors.icon}
+              />
+            </TouchableOpacity>
+            {showStartPicker && (
+              <DateTimePicker
+                value={startDate ?? new Date()}
+                mode="date"
+                display="default"
+                minimumDate={new Date()}
+                onChange={(_, selectedDate) => {
+                  setShowStartPicker(false);
+
+                  if (selectedDate) {
+                    setStartDate(selectedDate);
+                    // Reset end date if it is before the new start date
+                    if (endDate && selectedDate > endDate) {
+                      setEndDate(null);
+                    }
+
+                  }
+
+                }}
+              />
+            )}
+            {/* <TextInput
+              style={[styles.input, { color: colors.text, borderColor: isDark ? '#333' : '#ddd' }]}
               placeholder="e.g. 2026-08-01"
               placeholderTextColor={isDark ? '#666' : '#999'}
               value={startDate}
               onChangeText={setStartDate}
-            />
+            /> */}
 
             <Text style={[styles.label, { color: colors.text }]}>End Date (YYYY-MM-DD)</Text>
-            <TextInput 
-              style={[styles.input, { color: colors.text, borderColor: isDark ? '#333' : '#ddd' }]} 
+            <TouchableOpacity
+              style={[
+                styles.input,
+                {
+                  borderColor: isDark ? "#333" : "#ddd",
+                  flexDirection: "row",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                },
+              ]}
+              onPress={() => setShowEndPicker(true)}
+            >
+              <Text
+                style={{
+                  color: endDate ? colors.text : isDark ? "#666" : "#999",
+                  fontSize: 16,
+                }}
+              >
+                {endDate
+                  ? format(endDate, "yyyy-MM-dd")
+                  : "Select end date"}
+              </Text>
+
+              <MaterialIcons
+                name="calendar-month"
+                size={22}
+                color={colors.icon}
+              />
+            </TouchableOpacity>
+
+            {showEndPicker && (
+              <DateTimePicker
+                value={endDate ?? startDate ?? new Date()}
+                mode="date"
+                display="default"
+                minimumDate={startDate ?? new Date()}
+                onChange={(_, selectedDate) => {
+                  setShowEndPicker(false);
+
+                  if (selectedDate) {
+                    setEndDate(selectedDate);
+                  }
+                }}
+              />
+            )}
+            {/* <TextInput
+              style={[styles.input, { color: colors.text, borderColor: isDark ? '#333' : '#ddd' }]}
               placeholder="e.g. 2026-08-03"
               placeholderTextColor={isDark ? '#666' : '#999'}
               value={endDate}
               onChangeText={setEndDate}
-            />
+            /> */}
 
             <Text style={[styles.label, { color: colors.text }]}>Reason</Text>
-            <TextInput 
-              style={[styles.input, styles.textArea, { color: colors.text, borderColor: isDark ? '#333' : '#ddd' }]} 
+            <TextInput
+              style={[styles.input, styles.textArea, { color: colors.text, borderColor: isDark ? '#333' : '#ddd' }]}
               placeholder="Why are you taking leave?"
               placeholderTextColor={isDark ? '#666' : '#999'}
               multiline
@@ -148,7 +250,7 @@ export default function LeaveScreen() {
               onChangeText={setReason}
             />
 
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.submitBtn, { backgroundColor: colors.tint }]}
               onPress={handleSubmit}
               disabled={submitting}
@@ -168,16 +270,16 @@ export default function LeaveScreen() {
                   <View style={styles.leaveHeader}>
                     <Text style={[styles.leaveType, { color: colors.text }]}>{leave.type}</Text>
                     <View style={[
-                      styles.statusBadge, 
+                      styles.statusBadge,
                       leave.status === 'APPROVED' ? { backgroundColor: '#10b98120' } :
-                      leave.status === 'REJECTED' ? { backgroundColor: '#ef444420' } :
-                      { backgroundColor: '#f59e0b20' }
+                        leave.status === 'REJECTED' ? { backgroundColor: '#ef444420' } :
+                          { backgroundColor: '#f59e0b20' }
                     ]}>
                       <Text style={[
                         styles.statusText,
                         leave.status === 'APPROVED' ? { color: '#10b981' } :
-                        leave.status === 'REJECTED' ? { color: '#ef4444' } :
-                        { color: '#f59e0b' }
+                          leave.status === 'REJECTED' ? { color: '#ef4444' } :
+                            { color: '#f59e0b' }
                       ]}>{leave.status}</Text>
                     </View>
                   </View>
