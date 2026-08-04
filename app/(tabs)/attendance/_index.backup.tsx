@@ -1,4 +1,3 @@
-import { router } from "expo-router";
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import { Colors } from '@/constants/theme';
@@ -10,7 +9,6 @@ import * as ImagePicker from 'expo-image-picker';
 import { Redirect } from 'expo-router';
 import PermissionGuard from '@/components/permission-guard';
 import { usePermission } from "@/providers/PermissionProvider";
-import { useSelfieStore } from "@/stores/selfie-store";
 
 const API_BASE_URL = `${process.env.EXPO_PUBLIC_BETTER_AUTH_SERVER_URL}/api/attendance`;
 
@@ -46,8 +44,6 @@ function LiveClock() {
 }
 
 function AttendanceContent() {
-  const selfieUri = useSelfieStore((s) => s.uri);
-  const setSelfieUri = useSelfieStore((s) => s.setUri);
   const { data: session, isPending } = authClient.useSession();
   const {
     location,
@@ -67,137 +63,8 @@ function AttendanceContent() {
   const [activeTab, setActiveTab] = useState<'punch' | 'report'>('punch');
   const [logs, setLogs] = useState<any[]>([]);
   const [logsLoading, setLogsLoading] = useState(false);
-  useEffect(() => {
-    if (!selfieUri) return;
 
-    submitAttendance(selfieUri);
-
-    setSelfieUri(null);
-  }, [selfieUri]);
-
-  async function submitAttendance(uri: string) {
-    setActionLoading(true);
-
-    try {
-      const latestLocation = await refreshLocation();
-
-      if (!latestLocation) {
-        Alert.alert("Location Error");
-        return;
-      }
-
-      const selfieData = await uploadSelfie(uri);
-
-      if (!selfieData) return;
-
-      const { data, error } = await authClient.$fetch(
-        `${API_BASE_URL}/clock-in`,
-        {
-          method: "POST",
-          body: {
-            workMode: userWorkMode,
-            latitude: latestLocation.coords.latitude,
-            longitude: latestLocation.coords.longitude,
-            selfieUrl: selfieData.url,
-            selfiePublicId: selfieData.publicId,
-          },
-        }
-      );
-
-      if (error) throw error;
-
-      fetchTodayRecord();
-
-      Alert.alert("Success", "Clocked In");
-    } catch (e: any) {
-      Alert.alert("Error", e.message);
-    } finally {
-      setActionLoading(false);
-    }
-  }
-
-  //   async function uploadSelfie(uri: string) {
-  //     const cloudName =
-  //       process.env.EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME!;
-
-  //     const uploadPreset =
-  //       process.env.EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET!;
-
-  //     const formData = new FormData();
-
-  //     formData.append("file", {
-  //       uri,
-  //       type: "image/jpeg",
-  //       name: "selfie.jpg",
-  //     } as any);
-
-  //     formData.append(
-  //       "upload_preset",
-  //       uploadPreset
-  //     );
-
-  //    const response = await fetch(
-  //   `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
-  //   {
-  //     method: "POST",
-  //     body: formData,
-  //   }
-  // );
-
-  // const result = await response.json();
-
-  // console.log("Cloudinary Response:", result);
-
-  // if (!response.ok) {
-  //   throw new Error(result.error?.message ?? "Upload failed");
-  // }
-
-  // return {
-  //   url: result.secure_url,
-  //   publicId: result.public_id,
-  // };
-  //   }
-  async function uploadSelfie(uri: string) {
-    try {
-      const cloudName = process.env.EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME!;
-      const uploadPreset = process.env.EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET!;
-
-      const formData = new FormData();
-
-      formData.append("file", {
-        uri,
-        type: "image/jpeg",
-        name: "selfie.jpg",
-      } as any);
-
-      formData.append("upload_preset", uploadPreset);
-
-      const response = await fetch(
-        `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
-        {
-          method: "POST",
-          body: formData,
-        }
-      );
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error?.message || "Upload failed");
-      }
-
-      return {
-        url: result.secure_url,
-        publicId: result.public_id,
-      };
-    } catch (error) {
-      console.error("Cloudinary Upload Error:", error);
-      throw error;
-    }
-  }
-
-
-  if (isPending) {
+    if (isPending) {
     return (
       <View style={[styles.container, { backgroundColor: colors.background, justifyContent: 'center' }]}>
         <ActivityIndicator size="large" color={colors.tint} />
@@ -285,46 +152,46 @@ function AttendanceContent() {
   //   }
   // };
 
-  // const captureSelfie = async () => {
-  //   const result = await ImagePicker.launchCameraAsync({
-  //     mediaTypes: 'images',
-  //     allowsEditing: false,
-  //     quality: 0.3, // Reduced for faster upload
-  //     base64: false,
-  //     cameraType: ImagePicker.CameraType.front,
-  //   });
+  const captureSelfie = async () => {
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: 'images',
+      allowsEditing: false,
+      quality: 0.3, // Reduced for faster upload
+      base64: false,
+      cameraType: ImagePicker.CameraType.front,
+    });
 
-  //   if (result.canceled) {
-  //     return null;
-  //   }
+    if (result.canceled) {
+      return null;
+    }
 
-  //   // Upload to cloudinary
-  //   try {
-  //     const cloudName = process.env.EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME || 'dww8qwwby'; // fallback or env
-  //     const uploadPreset = process.env.EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET || 'crm_upload_preset'; // fallback or env
+    // Upload to cloudinary
+    try {
+      const cloudName = process.env.EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME || 'dww8qwwby'; // fallback or env
+      const uploadPreset = process.env.EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET || 'crm_upload_preset'; // fallback or env
 
-  //     // const base64Img = `data:image/jpeg;base64,${result.assets[0].base64}`;
-  //     const formData = new FormData();
-  //     formData.append('file', {
-  //       uri: result.assets[0].uri,
-  //       type: 'image/jpeg',
-  //       name: 'selfie.jpg',
-  //     } as any);
-  //     formData.append('upload_preset', uploadPreset);
+      // const base64Img = `data:image/jpeg;base64,${result.assets[0].base64}`;
+      const formData = new FormData();
+      formData.append('file', {
+        uri: result.assets[0].uri,
+        type: 'image/jpeg',
+        name: 'selfie.jpg',
+      } as any);
+      formData.append('upload_preset', uploadPreset);
 
-  //     const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
-  //       method: 'POST',
-  //       body: formData,
-  //     });
+      const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
+        method: 'POST',
+        body: formData,
+      });
 
-  //     if (!response.ok) throw new Error('Failed to upload');
-  //     const data = await response.json();
-  //     return { url: data.secure_url, publicId: data.public_id };
-  //   } catch (e) {
-  //     Alert.alert('Upload failed', 'Failed to upload selfie.');
-  //     return null;
-  //   }
-  // };
+      if (!response.ok) throw new Error('Failed to upload');
+      const data = await response.json();
+      return { url: data.secure_url, publicId: data.public_id };
+    } catch (e) {
+      Alert.alert('Upload failed', 'Failed to upload selfie.');
+      return null;
+    }
+  };
 
   const handleClockIn = async () => {
     setActionLoading(true);
@@ -339,17 +206,12 @@ function AttendanceContent() {
         return;
       }
       // 2. Selfie
-      // const selfieData = await captureSelfie();
+      const selfieData = await captureSelfie();
 
-      // if (!selfieData) {
-      //   setActionLoading(false);
-      //   return;
-      // }
-      // setShowCamera(true);
-
-      router.push("/attendance/selfie");
-
-      return;
+      if (!selfieData) {
+        setActionLoading(false);
+        return;
+      }
 
       // 3. Submit
       // let locName = currentLocationName;
@@ -364,26 +226,26 @@ function AttendanceContent() {
       //   }
       // }
 
-      // const { data, error } = await authClient.$fetch(`${API_BASE_URL}/clock-in`, {
-      //   method: 'POST',
-      //   body: {
-      //     workMode: userWorkMode,
-      //     latitude: latestLocation.coords.latitude,
-      //     longitude: latestLocation.coords.longitude,
-      //     // locationName: locName,
-      //     selfieUrl: selfieData.url,
-      //     selfiePublicId: selfieData.publicId,
-      //   },
-      // });
+      const { data, error } = await authClient.$fetch(`${API_BASE_URL}/clock-in`, {
+        method: 'POST',
+        body: {
+          workMode: userWorkMode,
+          latitude: latestLocation.coords.latitude,
+          longitude: latestLocation.coords.longitude,
+          // locationName: locName,
+          selfieUrl: selfieData.url,
+          selfiePublicId: selfieData.publicId,
+        },
+      });
 
-      // if (error) throw error;
+      if (error) throw error;
 
-      // if (data && (data as any).success) {
-      //   setRecord((data as any).record);
-      //   Alert.alert('Success', 'Clocked in successfully!');
-      // } else {
-      //   Alert.alert('Error', (data as any)?.error || 'Failed to clock in');
-      // }
+      if (data && (data as any).success) {
+        setRecord((data as any).record);
+        Alert.alert('Success', 'Clocked in successfully!');
+      } else {
+        Alert.alert('Error', (data as any)?.error || 'Failed to clock in');
+      }
     } catch (e: any) {
       Alert.alert('Error', e?.message || 'An unexpected error occurred');
     } finally {
@@ -681,8 +543,6 @@ function AttendanceContent() {
           )}
         </View>
       )}
-
-
     </ScrollView>
   );
 }

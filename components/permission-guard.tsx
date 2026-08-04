@@ -1,3 +1,4 @@
+import React from "react";
 import {
   View,
   Text,
@@ -5,6 +6,7 @@ import {
   TouchableOpacity,
 } from "react-native";
 import * as Linking from "expo-linking";
+
 import { usePermission } from "@/providers/PermissionProvider";
 
 export default function PermissionGuard({
@@ -14,8 +16,9 @@ export default function PermissionGuard({
 }) {
   const {
     loading,
-    granted,
-    requestPermissions,
+    locationGranted,
+    gpsEnabled,
+    requestLocationPermission,
   } = usePermission();
 
   if (loading) {
@@ -25,15 +28,18 @@ export default function PermissionGuard({
           flex: 1,
           justifyContent: "center",
           alignItems: "center",
+          padding: 24,
         }}
       >
         <ActivityIndicator size="large" />
-        <Text>Preparing Attendance...</Text>
+        <Text style={{ marginTop: 12 }}>
+          Preparing Attendance...
+        </Text>
       </View>
     );
   }
 
-  if (!granted) {
+  if (!locationGranted) {
     return (
       <View
         style={{
@@ -46,25 +52,61 @@ export default function PermissionGuard({
           style={{
             fontSize: 22,
             fontWeight: "bold",
-            marginBottom: 20,
+            marginBottom: 16,
           }}
         >
-          Permissions Required
+          Location Permission Required
         </Text>
 
         <Text style={{ marginBottom: 24 }}>
-          Camera and Location permissions are required to use attendance.
+          Location permission is required to mark attendance.
         </Text>
 
         <TouchableOpacity
-          onPress={requestPermissions}
+          onPress={requestLocationPermission}
+          style={{ marginBottom: 16 }}
         >
           <Text>Grant Permission</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          onPress={Linking.openSettings}
+        <TouchableOpacity onPress={Linking.openSettings}>
+          <Text>Open Settings</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  if (!gpsEnabled) {
+    return (
+      <View
+        style={{
+          flex: 1,
+          justifyContent: "center",
+          padding: 24,
+        }}
+      >
+        <Text
+          style={{
+            fontSize: 22,
+            fontWeight: "bold",
+            marginBottom: 16,
+          }}
         >
+          Turn On Location Services
+        </Text>
+
+        <Text style={{ marginBottom: 24 }}>
+          GPS / Location Services are turned off. Please enable them to continue.
+        </Text>
+
+        <TouchableOpacity
+          onPress={requestLocationPermission}
+          style={{ marginBottom: 16 }}
+        >
+          <Text>Check Again</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity onPress={Linking.openSettings}>
           <Text>Open Settings</Text>
         </TouchableOpacity>
       </View>
