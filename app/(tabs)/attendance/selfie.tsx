@@ -2,7 +2,7 @@ import BottomCard from "@/components/BottomCard";
 import CaptureButton from "@/components/CaptureButton";
 import FaceFrame from "@/components/FaceFrame";
 import FaceOverlay from "@/components/FaceOverlay";
-import { GUIDE_HEIGHT, GUIDE_LEFT, GUIDE_TOP, GUIDE_WIDTH } from "@/constants/face-guide";
+import { GUIDE_HEIGHT, GUIDE_TOP, GUIDE_WIDTH } from "@/constants/face-guide";
 import { useSelfieStore } from "@/stores/selfie-store";
 import { Stack, useRouter } from "expo-router";
 import { useRef, useState, useEffect } from "react";
@@ -139,13 +139,15 @@ export default function SelfieScreen() {
                 </View>
 
                 <View style={styles.bottomSection}>
-                    <BottomCard status={
-                                        capturing
-                                            ? "capturing"
-                                            : hasOneFace
-                                            ? "ready"
-                                            : "detecting"
-                                    } />
+                    <BottomCard
+                        status={
+                            capturing
+                                ? "capturing"
+                                : hasOneFace
+                                ? "ready"
+                                : "detecting"
+                        }
+                    />
 
                     <CaptureButton
                         loading={capturing}
@@ -158,7 +160,6 @@ export default function SelfieScreen() {
     );
 }
 
-
 const styles = StyleSheet.create({
     bottomSection: {
         position: "absolute",
@@ -169,7 +170,7 @@ const styles = StyleSheet.create({
     },
     faceFrameContainer: {
         position: "absolute",
-        alignSelf: "center"
+        alignSelf: "center",
     },
     container: {
         flex: 1,

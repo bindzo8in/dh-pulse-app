@@ -42,7 +42,6 @@ function LiveClock() {
     </View>
   );
 }
-
 function AttendanceContent() {
   const { data: session, isPending } = authClient.useSession();
   const {
@@ -58,7 +57,6 @@ function AttendanceContent() {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [userWorkMode, setUserWorkMode] = useState<'OFFICE' | 'REMOTE' | 'HYBRID'>('OFFICE');
-  // const [currentLocationName, setCurrentLocationName] = useState<string | null>(null);
 
   const [activeTab, setActiveTab] = useState<'punch' | 'report'>('punch');
   const [logs, setLogs] = useState<any[]>([]);
@@ -125,7 +123,6 @@ function AttendanceContent() {
   if (!session) {
     return <Redirect href="/account" />;
   }
-
   // const fetchCurrentLocation = async () => {
   //   try {
   //     const { status } = await Location.requestForegroundPermissionsAsync();

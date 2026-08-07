@@ -90,17 +90,14 @@ export function PermissionProvider({
   }, [requestLocationPermission]);
 
   useEffect(() => {
-    const sub = AppState.addEventListener(
-      "change",
-      (state) => {
-        if (state === "active") {
-          refreshLocation();
-        }
+    const sub = AppState.addEventListener("change", (state) => {
+      if (state === "active") {
+        requestLocationPermission();
       }
-    );
+    });
 
     return () => sub.remove();
-  }, [refreshLocation]);
+  }, [requestLocationPermission]);
 
   return (
     <PermissionContext.Provider

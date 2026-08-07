@@ -19,8 +19,8 @@ type Props = {
 
 export default function CaptureButton({
     loading = false,
+    disabled = false,
     onPress,
-    disabled
 }: Props) {
     const scale = useSharedValue(1);
 
@@ -47,11 +47,11 @@ export default function CaptureButton({
     return (
         <Animated.View style={[styles.wrapper, animatedStyle]}>
             <Pressable
+                disabled={loading || disabled}
                 onPress={handlePress}
                 onPressIn={handlePressIn}
                 onPressOut={handlePressOut}
                 style={styles.outer}
-                 disabled={loading || disabled}
             >
                 <Animated.View style={styles.middle}>
                     {loading ? (
