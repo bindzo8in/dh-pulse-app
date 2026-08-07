@@ -18,46 +18,52 @@ const SyncContext = createContext<SyncContextType>({
 
 export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const syncQueue = useAttendanceOfflineStore((s) => s.syncQueue);
-  const removeAction = useAttendanceOfflineStore((s) => s.removeAction);
-  const updateActionStatus = useAttendanceOfflineStore((s) => s.updateActionStatus);
-  const setRecord = useAttendanceOfflineStore((s) => s.setRecord);
-
   const [isSyncing, setIsSyncing] = useState(false);
+
   const isProcessingRef = useRef(false);
   const retryCountRef = useRef<Record<string, number>>({});
   const lastAttemptRef = useRef<Record<string, number>>({});
 
   const processQueue = useCallback(async (forceRetry = false) => {
-    if (isProcessingRef.current || syncQueue.length === 0) return;
+    if (isProcessingRef.current) return;
+
+    const store = useAttendanceOfflineStore.getState();
+    const currentQueue = store.syncQueue;
+
+    // Filter candidate actions to process
+    const candidates = currentQueue.filter((action) => {
+      if (action.status === 'PENDING') return true;
+      if (action.status === 'SYNCING') return true;
+      if (forceRetry) return true;
+      if (action.status === 'FAILED') {
+        const retries = retryCountRef.current[action.id] || 0;
+        const lastAttempt = lastAttemptRef.current[action.id] || 0;
+        // Retry failed items after 30s backoff if retries < 3
+        return retries < 3 && Date.now() - lastAttempt > 30000;
+      }
+      return false;
+    });
+
+    if (candidates.length === 0) return;
 
     // Check Network State
     try {
       const networkState = await Network.getNetworkStateAsync();
-      console.log("SyncProvider networkState =>", networkState);
       if (networkState.isConnected === false) {
-        console.log("Sync skipped: Device is offline");
         return;
       }
     } catch (netErr) {
-      console.warn("Failed to check network state, attempting sync anyway", netErr);
+      console.warn("Failed to check network state", netErr);
     }
 
     isProcessingRef.current = true;
     setIsSyncing(true);
 
     try {
-      for (const action of syncQueue) {
+      for (const action of candidates) {
         const now = Date.now();
         const lastAttempt = lastAttemptRef.current[action.id] || 0;
-        const retries = retryCountRef.current[action.id] || 0;
 
-        // Skip if failed multiple times and not forced
-        if (!forceRetry && action.status === 'FAILED' && retries >= 3 && now - lastAttempt < 30000) {
-          console.log(`Action ${action.id} has failed ${retries} times. Waiting before next retry.`);
-          break;
-        }
-
-        // Avoid hammering retries too quickly (wait at least 3s between retries)
         if (!forceRetry && now - lastAttempt < 3000) {
           continue;
         }
@@ -65,58 +71,49 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
         lastAttemptRef.current[action.id] = now;
 
         try {
-          updateActionStatus(action.id, 'SYNCING');
+          useAttendanceOfflineStore.getState().updateActionStatus(action.id, 'SYNCING');
           await syncAction(action);
-          removeAction(action.id);
+          useAttendanceOfflineStore.getState().removeAction(action.id);
           delete retryCountRef.current[action.id];
           delete lastAttemptRef.current[action.id];
         } catch (error: any) {
           const errorMsg = error?.message || 'Sync failed';
-          console.error(`Sync failed for action ${action.id} (${action.type}):`, errorMsg);
+          console.error(`Sync failed for action ${action.id}:`, errorMsg);
           retryCountRef.current[action.id] = (retryCountRef.current[action.id] || 0) + 1;
-          updateActionStatus(action.id, 'FAILED', errorMsg);
-
-          // Stop processing subsequent actions to preserve order
-          break;
+          useAttendanceOfflineStore.getState().updateActionStatus(action.id, 'FAILED', errorMsg);
+          break; // Stop processing further actions to preserve chronological order
         }
       }
     } finally {
       isProcessingRef.current = false;
       setIsSyncing(false);
     }
-  }, [syncQueue, updateActionStatus, removeAction]);
+  }, []);
 
-  // Reset any stuck 'SYNCING' actions on mount or queue update
+  // Trigger processing when syncQueue changes (only if there are PENDING/SYNCING actions and not processing)
   useEffect(() => {
-    let hasStuckActions = false;
-    for (const action of syncQueue) {
-      if (action.status === 'SYNCING') {
-        const lastAttempt = lastAttemptRef.current[action.id] || 0;
-        if (Date.now() - lastAttempt > 15000) {
-          updateActionStatus(action.id, 'PENDING');
-          hasStuckActions = true;
-        }
-      }
-    }
-    if (hasStuckActions) return;
+    const hasPendingOrStuck = syncQueue.some(
+      (a) => a.status === 'PENDING' || a.status === 'SYNCING'
+    );
 
-    processQueue();
-  }, [syncQueue, processQueue, updateActionStatus]);
+    if (hasPendingOrStuck && !isProcessingRef.current) {
+      processQueue();
+    }
+  }, [syncQueue, processQueue]);
 
   const retrySync = useCallback(async () => {
-    // Reset all failed / syncing actions to PENDING for manual retry
-    for (const action of syncQueue) {
-      updateActionStatus(action.id, 'PENDING');
+    const store = useAttendanceOfflineStore.getState();
+    for (const action of store.syncQueue) {
+      store.updateActionStatus(action.id, 'PENDING');
       delete retryCountRef.current[action.id];
       delete lastAttemptRef.current[action.id];
     }
     await processQueue(true);
-  }, [syncQueue, updateActionStatus, processQueue]);
+  }, [processQueue]);
 
   const syncAction = async (action: OfflineAction) => {
     let payload = { ...action.payload };
 
-    // 1. Handle Selfie Upload if present
     if (action.type === 'CLOCK_IN' && payload.localSelfieUri) {
       let fileExists = true;
       try {
@@ -133,24 +130,21 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
           payload.selfiePublicId = selfieData.publicId;
           delete payload.localSelfieUri;
 
-          // Attempt local file cleanup
           try {
             const fileToDelete = new File(action.payload.localSelfieUri);
             fileToDelete.delete();
           } catch (e) {
-            console.warn("Failed to delete local selfie file after upload", e);
+            console.warn("Failed to delete local selfie after upload", e);
           }
         } catch (uploadErr: any) {
-          console.warn("Cloudinary selfie upload failed, proceeding with clock-in payload", uploadErr);
+          console.warn("Cloudinary upload failed, proceeding with clock-in", uploadErr);
           delete payload.localSelfieUri;
         }
       } else {
-        console.warn("Local selfie file not found at path, proceeding without selfie", payload.localSelfieUri);
         delete payload.localSelfieUri;
       }
     }
 
-    // 2. Call Backend API
     const endpoint = getEndpoint(action.type);
     const { data, error } = await authClient.$fetch(endpoint, {
       method: 'POST',
@@ -163,7 +157,7 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     if (data && (data as any).success) {
       if ((data as any).record) {
-        setRecord((data as any).record);
+        useAttendanceOfflineStore.getState().setRecord((data as any).record);
       }
     } else {
       throw new Error((data as any)?.error || (data as any)?.message || 'API Error during sync');

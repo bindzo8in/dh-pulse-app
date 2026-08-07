@@ -53,12 +53,13 @@ export default function HomeScreen() {
     }
   };
 
-  useEffect(() => {
-    if (isPending) return;
-    if (!session) return;
+  const userId = session?.user?.id;
 
-    fetchData();
-  }, [isPending, session]);
+  useEffect(() => {
+    if (userId) {
+      fetchData();
+    }
+  }, [userId]);
 
 
   if (isPending) return null;

@@ -54,7 +54,9 @@ export function PermissionProvider({
 
   const requestLocationPermission =
     useCallback(async () => {
-      setLoading(true);
+      if (!locationGranted) {
+        setLoading(true);
+      }
 
       try {
         const permission =
@@ -83,7 +85,7 @@ export function PermissionProvider({
       } finally {
         setLoading(false);
       }
-    }, [refreshLocation]);
+    }, [locationGranted, refreshLocation]);
 
   useEffect(() => {
     requestLocationPermission();
@@ -92,12 +94,12 @@ export function PermissionProvider({
   useEffect(() => {
     const sub = AppState.addEventListener("change", (state) => {
       if (state === "active") {
-        requestLocationPermission();
+        refreshLocation();
       }
     });
 
     return () => sub.remove();
-  }, [requestLocationPermission]);
+  }, [refreshLocation]);
 
   return (
     <PermissionContext.Provider

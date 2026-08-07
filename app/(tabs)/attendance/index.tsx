@@ -195,17 +195,19 @@ function AttendanceContent() {
     }
   };
 
-  useEffect(() => {
-    if (session) {
-      fetchTodayRecord();
-    }
-  }, [session]);
+  const userId = session?.user?.id;
 
   useEffect(() => {
-    if (session && activeTab === 'report') {
+    if (userId) {
+      fetchTodayRecord();
+    }
+  }, [userId]);
+
+  useEffect(() => {
+    if (userId && activeTab === 'report') {
       fetchLogs();
     }
-  }, [session, activeTab]);
+  }, [userId, activeTab]);
 
   if (isPending) {
     return (
