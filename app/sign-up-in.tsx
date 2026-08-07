@@ -128,7 +128,7 @@ export default function AuthScreen() {
                 <MaterialIcons name="mark-email-unread" size={80} color={colors.tint} style={{ marginBottom: 24 }} />
                 <Text style={dynamicStyles.title}>Check your email</Text>
                 <Text style={[dynamicStyles.subtitle, { textAlign: 'center', marginTop: 8, marginBottom: 32 }]}>
-                    We've sent a verification link to {email}. Please check your inbox and verify your account to continue.
+                    We&apos;ve sent a verification link to {email}. Please check your inbox and verify your account to continue.
                 </Text>
                 <TouchableOpacity
                     style={[dynamicStyles.submitButton, { width: '100%' }]}

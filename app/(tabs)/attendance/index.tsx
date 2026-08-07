@@ -1,12 +1,10 @@
-import { router } from "expo-router";
+import { router, Redirect } from "expo-router";
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Dimensions } from 'react-native';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { authClient } from '@/lib/auth-client';
-import { MaterialIcons, Ionicons } from '@expo/vector-icons';
-import * as ImagePicker from 'expo-image-picker';
-import { Redirect } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import PermissionGuard from '@/components/permission-guard';
 import { usePermission } from "@/providers/PermissionProvider";
 import { useSelfieStore } from "@/stores/selfie-store";
@@ -65,7 +63,7 @@ function AttendanceContent() {
   const setRecord = useAttendanceOfflineStore((s) => s.setRecord);
   const addOfflineAction = useAttendanceOfflineStore((s) => s.addOfflineAction);
   const syncQueue = useAttendanceOfflineStore((s) => s.syncQueue);
-  const { isSyncing } = useSync();
+  const { isSyncing, retrySync } = useSync();
 
   const [settings, setSettings] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -158,28 +156,6 @@ function AttendanceContent() {
     });
   };
 
-  if (isPending) {
-    return (
-      <View style={[styles.container, { backgroundColor: colors.background, justifyContent: 'center' }]}>
-        <ActivityIndicator size="large" color={colors.tint} />
-      </View>
-    );
-  }
-
-  if (!session) {
-    return <Redirect href="/account" />;
-  }
-
-  useEffect(() => {
-    fetchTodayRecord();
-  }, []);
-
-  useEffect(() => {
-    if (activeTab === 'report') {
-      fetchLogs();
-    }
-  }, [activeTab]);
-
   const fetchLogs = async () => {
     setLogsLoading(true);
     try {
@@ -218,6 +194,30 @@ function AttendanceContent() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (session) {
+      fetchTodayRecord();
+    }
+  }, [session]);
+
+  useEffect(() => {
+    if (session && activeTab === 'report') {
+      fetchLogs();
+    }
+  }, [session, activeTab]);
+
+  if (isPending) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background, justifyContent: 'center' }]}>
+        <ActivityIndicator size="large" color={colors.tint} />
+      </View>
+    );
+  }
+
+  if (!session) {
+    return <Redirect href="/account" />;
+  }
 
   const handleClockIn = async () => {
     try {
@@ -315,12 +315,16 @@ function AttendanceContent() {
           <LiveClock />
 
           {syncQueue.length > 0 && (
-            <View style={[styles.syncStatus, { backgroundColor: colors.tint + '15' }]}>
+            <TouchableOpacity
+              onPress={() => retrySync()}
+              activeOpacity={0.7}
+              style={[styles.syncStatus, { backgroundColor: colors.tint + '15' }]}
+            >
               <ActivityIndicator size="small" color={colors.tint} />
               <Text style={{ color: colors.tint, fontSize: 13, fontWeight: '500' }}>
-                {isSyncing ? "Syncing..." : `${syncQueue.length} item${syncQueue.length > 1 ? 's' : ''} pending`}
+                {isSyncing ? "Syncing..." : `${syncQueue.length} item${syncQueue.length > 1 ? 's' : ''} pending (tap to retry)`}
               </Text>
-            </View>
+            </TouchableOpacity>
           )}
 
           {/* Work Mode Badge */}
@@ -347,7 +351,7 @@ function AttendanceContent() {
                 </View>
                 <Text style={[styles.statusTitle, { color: '#10b981' }]}>Shift Completed</Text>
                 <Text style={[styles.statusSub, { color: isDark ? '#6ee7b7' : '#065f46' }]}>
-                  You've successfully completed today's shift
+                  You&apos;ve successfully completed today&apos;s shift
                 </Text>
               </View>
             ) : !isClockedIn ? (

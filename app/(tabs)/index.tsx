@@ -13,6 +13,7 @@ const API_BASE_URL = `${process.env.EXPO_PUBLIC_BETTER_AUTH_SERVER_URL}/api`;
 export default function HomeScreen() {
   const { data: session, isPending } = authClient.useSession();
 
+
   const colorScheme = useColorScheme() ?? 'light';
   const colors = Colors[colorScheme];
   const isDark = colorScheme === 'dark';
@@ -24,10 +25,6 @@ export default function HomeScreen() {
 
   const [holidays, setHolidays] = useState<any[]>([]);
   const [refreshing, setRefreshing] = useState(false);
-
-  useEffect(() => {
-    fetchData();
-  }, []);
 
   const fetchData = async () => {
     setRefreshing(true);
@@ -56,14 +53,23 @@ export default function HomeScreen() {
     }
   };
 
-  const isClockedIn = attendanceRecord && !attendanceRecord.clockOut;
-  const todayDate = format(new Date(), 'EEEE, MMMM do');
+  useEffect(() => {
+    if (isPending) return;
+    if (!session) return;
+
+    fetchData();
+  }, [isPending, session]);
+
 
   if (isPending) return null;
-
   if (!session) {
     return <Redirect href="/account" />;
   }
+
+  const isClockedIn = attendanceRecord && !attendanceRecord.clockOut;
+  const todayDate = format(new Date(), 'EEEE, MMMM do');
+
+
 
   return (
     <ScrollView
@@ -84,7 +90,7 @@ export default function HomeScreen() {
       <View style={styles.content}>
         {/* Today's Status Card */}
         <View style={[styles.card, { backgroundColor: isDark ? '#1c1c1e' : '#fff' }]}>
-          <Text style={[styles.cardTitle, { color: colors.text }]}>Today's Status</Text>
+          <Text style={[styles.cardTitle, { color: colors.text }]}>Today&apos;s Status</Text>
 
           <View style={styles.statusRow}>
             {isClockedIn ? (

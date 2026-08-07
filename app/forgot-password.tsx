@@ -21,8 +21,10 @@ export default function ForgotPasswordScreen() {
   const colorScheme = useColorScheme() ?? 'light';
   const colors = Colors[colorScheme];
   const isDark = colorScheme === 'dark';
+  const { data: session, isPending } = authClient.useSession();
+  const mail = session?.user?.email;
 
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(mail || '');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
@@ -61,7 +63,7 @@ export default function ForgotPasswordScreen() {
         <MaterialIcons name="mark-email-unread" size={80} color={colors.tint} style={{ marginBottom: 24 }} />
         <Text style={dynamicStyles.title}>Check your email</Text>
         <Text style={[dynamicStyles.subtitle, { textAlign: 'center', marginTop: 8, marginBottom: 32 }]}>
-          We've sent a password reset link to {email}.
+          We&apos;ve sent a password reset link to {email}.
         </Text>
         <TouchableOpacity
           style={[dynamicStyles.submitButton, { width: '100%' }]}

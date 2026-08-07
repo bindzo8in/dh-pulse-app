@@ -116,15 +116,14 @@ export default function SelfieScreen() {
             />
 
             <View style={styles.container}>
-<Camera
-    ref={cameraRef}
-    style={StyleSheet.absoluteFill}
-    device={device}
-    isActive
-    photo
-    frameProcessor={frameProcessor}
-    frameProcessorFps={5}
-/>
+                <Camera
+                    ref={cameraRef}
+                    style={StyleSheet.absoluteFill}
+                    device={device}
+                    isActive
+                    photo
+                    frameProcessor={frameProcessor}
+                />
 
                 <View
                     style={{

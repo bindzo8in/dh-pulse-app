@@ -64,29 +64,6 @@ function AttendanceContent() {
   const [logs, setLogs] = useState<any[]>([]);
   const [logsLoading, setLogsLoading] = useState(false);
 
-    if (isPending) {
-    return (
-      <View style={[styles.container, { backgroundColor: colors.background, justifyContent: 'center' }]}>
-        <ActivityIndicator size="large" color={colors.tint} />
-      </View>
-    );
-  }
-
-  if (!session) {
-    return <Redirect href="/account" />;
-  }
-
-  useEffect(() => {
-    fetchTodayRecord();
-    // fetchCurrentLocation();
-  }, []);
-
-  useEffect(() => {
-    if (activeTab === 'report') {
-      fetchLogs();
-    }
-  }, [activeTab]);
-
   const fetchLogs = async () => {
     setLogsLoading(true);
     try {
@@ -124,6 +101,30 @@ function AttendanceContent() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (session) {
+      fetchTodayRecord();
+    }
+  }, [session]);
+
+  useEffect(() => {
+    if (session && activeTab === 'report') {
+      fetchLogs();
+    }
+  }, [session, activeTab]);
+
+  if (isPending) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background, justifyContent: 'center' }]}>
+        <ActivityIndicator size="large" color={colors.tint} />
+      </View>
+    );
+  }
+
+  if (!session) {
+    return <Redirect href="/account" />;
+  }
 
   // const fetchCurrentLocation = async () => {
   //   try {
