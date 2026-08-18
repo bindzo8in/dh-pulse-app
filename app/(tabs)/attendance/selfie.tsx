@@ -21,7 +21,6 @@ import {
 } from "react-native-vision-camera";
 
 import {
-    Face,
     useFaceDetector,
 } from "react-native-vision-camera-face-detector";
 
@@ -50,7 +49,8 @@ export default function SelfieScreen() {
 
     const cameraRef = useRef<Camera>(null);
     const [capturing, setCapturing] = useState(false);
-    const [faces, setFaces] = useState<Face[]>([]);
+    const [hasOneFace, setHasOneFace] = useState(false);
+    const lastHasOneFaceRef = useRef(false);
     const router = useRouter();
     const setUri = useSelfieStore((s) => s.setUri);
 
@@ -69,20 +69,22 @@ export default function SelfieScreen() {
         }
     }
 
-    const updateFaces = Worklets.createRunOnJS((faces: Face[]) => {
-        setFaces(faces);
+    const updateHasOneFace = Worklets.createRunOnJS((count: number) => {
+        const isOne = count === 1;
+        if (isOne !== lastHasOneFaceRef.current) {
+            lastHasOneFaceRef.current = isOne;
+            setHasOneFace(isOne);
+        }
     });
 
     const frameProcessor = useFrameProcessor(
         (frame) => {
             "worklet";
             const detected = detectFaces(frame);
-            updateFaces(detected);
+            updateHasOneFace(detected.length);
         },
         [detectFaces]
     );
-
-    const hasOneFace = faces.length === 1;
 
     if (!hasPermission) {
         return (

@@ -8,7 +8,9 @@ import { useRouter } from 'expo-router';
 import { format } from 'date-fns';
 import DateTimePicker from "@react-native-community/datetimepicker";
 
-const API_BASE_URL = `${process.env.EXPO_PUBLIC_BETTER_AUTH_SERVER_URL}/api`;
+const rawUrl = process.env.EXPO_PUBLIC_BETTER_AUTH_SERVER_URL || "https://crm.designhubone.in";
+const SERVER_URL = rawUrl.replace(/^["']|["']$/g, "").replace(/\/+$/, "").trim();
+const API_BASE_URL = `${SERVER_URL}/api`;
 
 export default function LeaveScreen() {
   const colorScheme = useColorScheme() ?? 'light';

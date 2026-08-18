@@ -14,7 +14,9 @@ import { useSync } from "@/providers/SyncProvider";
 import { LinearGradient } from 'expo-linear-gradient';
 
 const { width } = Dimensions.get('window');
-const API_BASE_URL = `${process.env.EXPO_PUBLIC_BETTER_AUTH_SERVER_URL}/api/attendance`;
+const rawUrl = process.env.EXPO_PUBLIC_BETTER_AUTH_SERVER_URL || "https://crm.designhubone.in";
+const SERVER_URL = rawUrl.replace(/^["']|["']$/g, "").replace(/\/+$/, "").trim();
+const API_BASE_URL = `${SERVER_URL}/api/attendance`;
 
 export default function AttendanceScreen() {
   return (

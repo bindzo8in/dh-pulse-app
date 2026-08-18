@@ -4,7 +4,9 @@ import { useAttendanceOfflineStore, OfflineAction } from '@/stores/attendance-of
 import { authClient } from '@/lib/auth-client';
 import { File } from 'expo-file-system';
 
-const API_BASE_URL = `${process.env.EXPO_PUBLIC_BETTER_AUTH_SERVER_URL}/api/attendance`;
+const rawUrl = process.env.EXPO_PUBLIC_BETTER_AUTH_SERVER_URL || "https://crm.designhubone.in";
+const SERVER_URL = rawUrl.replace(/^["']|["']$/g, "").replace(/\/+$/, "").trim();
+const API_BASE_URL = `${SERVER_URL}/api/attendance`;
 
 interface SyncContextType {
   isSyncing: boolean;
